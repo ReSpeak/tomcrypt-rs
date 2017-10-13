@@ -1,0 +1,29 @@
+[package]
+name = "tomcrypt"
+version = "0.1.0"
+authors = ["Flakebi <flakebi@t-online.de>"]
+description = """
+Bindings to libtomcrypt, a fairly comprehensive, modular and portable
+cryptographic toolkit that provides developers with a vast array of well known
+published block ciphers, one-way hash functions, chaining modes, pseudo-random
+number generators, public key cryptography and a plethora of other routines.
+"""
+repository = "https://github.com/ReSpeak/tomcrypt-rs"
+documentation = "https://docs.rs/tomcrypt"
+readme = "README.md"
+keywords = ["cryptography", "crypto"]
+categories = ["cryptography", "api-bindings"]
+license = "MIT/Apache-2.0"
+include = [
+    "src/*",
+    "README.md",
+    "Cargo.toml"
+]
+
+[lib]
+name = "tomcrypt"
+path = "src/lib.rs"
+
+[dependencies]
+error-chain = "0.11"
+tomcrypt-sys = "0.1"

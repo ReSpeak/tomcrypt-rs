@@ -1,0 +1,21 @@
+[package]
+name = "tomcrypt-sys"
+version = "0.1.0"
+authors = ["Flakebi <flakebi@t-online.de>"]
+description = "Raw bindings to libtomcrypt"
+repository = "https://github.com/ReSpeak/tomcrypt-rs"
+documentation = "https://docs.rs/tomcrypt-sys"
+keywords = ["cryptography", "crypto"]
+categories = ["cryptography", "external-ffi-bindings"]
+license = "MIT/Apache-2.0"
+build = "build.rs"
+include = [
+    "libtomcrypt/src/*",
+    "tomsfastmath/src/*",
+    "src/*",
+    "build.rs",
+    "Cargo.toml"
+]
+
+[build-dependencies]
+cc = { version = "1", features = ["parallel"] }

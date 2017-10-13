@@ -1,0 +1,6 @@
+[submodule "tomcrypt-sys/libtomcrypt"]
+	path = tomcrypt-sys/libtomcrypt
+	url = https://github.com/libtom/libtomcrypt.git
+[submodule "tomcrypt-sys/tomsfastmath"]
+	path = tomcrypt-sys/tomsfastmath
+	url = https://github.com/libtom/tomsfastmath.git
