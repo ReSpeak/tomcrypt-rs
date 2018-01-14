@@ -25,5 +25,5 @@ name = "tomcrypt"
 path = "src/lib.rs"
 
 [dependencies]
-error-chain = "0.11"
+failure = "0.1"
 tomcrypt-sys = "0.1"

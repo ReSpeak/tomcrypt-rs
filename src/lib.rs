@@ -1,4 +1,5 @@
-//! [LibTomCrypt](https://github.com/libtom/libtomcrypt) is a fairly comprehensive, modular and portable cryptographic
+//! [LibTomCrypt](https://github.com/libtom/libtomcrypt) is a fairly
+//! comprehensive, modular and portable cryptographic
 //! toolkit that provides developers with a vast array of well known published
 //! block ciphers, one-way hash functions, chaining modes, pseudo-random number
 //! generators, public key cryptography and a plethora of other routines.
@@ -19,14 +20,12 @@
 //! tomcrypt = "0.1"
 //! ```
 
-// Limit for error_chain
-#![recursion_limit = "1024"]
-
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 extern crate tomcrypt_sys;
 
 use std::ffi::*;
+use std::fmt;
 use std::mem::{self, transmute};
 use std::os::raw::*;
 use std::ptr;
@@ -36,33 +35,43 @@ pub mod ffi {
     pub use tomcrypt_sys::_bindgen_ty_2 as Error;
 }
 
-#[allow(unused_doc_comment)]
-pub mod errors {
-    // Create the Error, ErrorKind, ResultExt, and Result types
-    error_chain! {
-        foreign_links {
-            Io(::std::io::Error);
-        }
-        errors {
-            Tomcrypt(e: ::ffi::_bindgen_ty_2) {
-                description("tomcrypt error")
-                display("tomcrypt error {}", unsafe {
-                    ::CStr::from_ptr(::ffi::error_to_string(*e as ::c_int))
-                        .to_str().unwrap()
-                })
-            }
-        }
-    }
-}
-use errors::*;
-
 macro_rules! tryt {
     ($e:expr) => {
         match mem::transmute($e) {
             ffi::CRYPT_OK => (),
-            e => bail!(ErrorKind::Tomcrypt(e)),
+            e => return Err(Error::Tomcrypt(TomcryptError(e))),
         }
     };
+}
+
+type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Fail, Debug)]
+pub enum Error {
+    #[fail(display = "{}", _0)]
+    Io(std::io::Error),
+    #[fail(display = "{}", _0)]
+    Tomcrypt(TomcryptError),
+}
+
+pub struct TomcryptError(ffi::_bindgen_ty_2);
+
+impl fmt::Display for TomcryptError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = unsafe {
+            CStr::from_ptr(ffi::error_to_string(self.0 as c_int)).to_str()
+                .unwrap()
+        };
+        write!(f, "{}", s)?;
+        Ok(())
+    }
+}
+
+impl fmt::Debug for TomcryptError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TomcryptError({})", self)?;
+        Ok(())
+    }
 }
 
 /// A random number generator.
@@ -120,7 +129,7 @@ impl EccKey {
     }
 
     /// Export public ecc key in the tomcrypt format.
-    pub fn export_public(&mut self) -> Result<Vec<u8>> {
+    pub fn export_public(&self) -> Result<Vec<u8>> {
         unsafe {
             let mut buf = vec![0; ffi::ECC_BUF_SIZE as usize];
             let mut len = buf.len() as c_ulong;
@@ -128,7 +137,7 @@ impl EccKey {
                 buf.as_mut_ptr(),
                 &mut len,
                 transmute(ffi::PK_PUBLIC),
-                &mut self.0
+                transmute(&self.0),
             ));
             buf.truncate(len as usize);
             Ok(buf)
@@ -136,7 +145,7 @@ impl EccKey {
     }
 
     /// Export private ecc key in the tomcrypt format.
-    pub fn export_private(&mut self) -> Result<Vec<u8>> {
+    pub fn export_private(&self) -> Result<Vec<u8>> {
         unsafe {
             let mut buf = vec![0; ffi::ECC_BUF_SIZE as usize];
             let mut len = buf.len() as c_ulong;
@@ -144,25 +153,29 @@ impl EccKey {
                 buf.as_mut_ptr(),
                 &mut len,
                 transmute(ffi::PK_PRIVATE),
-                &mut self.0
+                transmute(&self.0),
             ));
             buf.truncate(len as usize);
             Ok(buf)
         }
     }
 
+    pub fn is_private(&self) -> bool {
+        self.0.type_ == ffi::PK_PRIVATE as c_int
+    }
+
     /// Derive a shared secret from a private and a public key.
     pub fn create_shared_secret(
-        private_key: &mut EccKey,
-        public_key: &mut EccKey,
+        private_key: &EccKey,
+        public_key: &EccKey,
         len: usize,
     ) -> Result<Vec<u8>> {
         unsafe {
             let mut buf = vec![0; len];
             let mut len = len as c_ulong;
             tryt!(ffi::ecc_shared_secret(
-                &mut private_key.0,
-                &mut public_key.0,
+                transmute(&private_key.0),
+                transmute(&public_key.0),
                 buf.as_mut_ptr(),
                 &mut len
             ));
@@ -185,7 +198,8 @@ impl EaxState {
     ///
     /// The header parameter optionally contains (public) data, that will
     /// influence the generated authentication tag (also called mac).
-    pub fn new(cipher: Cipher, key: &[u8], nonce: &[u8], header: Option<&[u8]>) -> Result<Self> {
+    pub fn new(cipher: Cipher, key: &[u8], nonce: &[u8], header: Option<&[u8]>)
+        -> Result<Self> {
         unsafe {
             let (h, h_len) = if let Some(header) = header {
                 (header.as_ptr(), header.len() as c_ulong)
@@ -220,6 +234,20 @@ impl EaxState {
         Ok(())
     }
 
+    /// Encrypts the given data.
+    pub fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>> {
+        unsafe {
+            let mut res = vec![0; data.len()];
+            tryt!(ffi::eax_encrypt(
+                &mut self.0,
+                data.as_ptr(),
+                res.as_mut_ptr(),
+                data.len() as c_ulong
+            ));
+            Ok(res)
+        }
+    }
+
     /// Decrypts the given data in place.
     pub fn decrypt_in_place(&mut self, data: &mut [u8]) -> Result<()> {
         unsafe {
@@ -231,6 +259,20 @@ impl EaxState {
             ));
         }
         Ok(())
+    }
+
+    /// Decrypts the given data.
+    pub fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>> {
+        unsafe {
+            let mut res = vec![0; data.len()];
+            tryt!(ffi::eax_decrypt(
+                &mut self.0,
+                data.as_ptr(),
+                res.as_mut_ptr(),
+                data.len() as c_ulong
+            ));
+            Ok(res)
+        }
     }
 
     /// Generate the authentication tag (mac) with the given length.
