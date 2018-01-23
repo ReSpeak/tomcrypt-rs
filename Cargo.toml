@@ -27,3 +27,6 @@ path = "src/lib.rs"
 [dependencies]
 failure = "0.1"
 tomcrypt-sys = "0.1"
+
+[dev-dependencies]
+hex = "0.3.1"

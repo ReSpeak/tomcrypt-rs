@@ -22,57 +22,30 @@
 
 #[macro_use]
 extern crate failure;
+#[cfg(test)]
+extern crate hex;
 extern crate tomcrypt_sys;
 
+#[macro_use]
+mod error;
+pub mod hash;
+
 use std::ffi::*;
-use std::fmt;
 use std::mem::{self, transmute};
 use std::os::raw::*;
 use std::ptr;
+use std::sync::{Once, ONCE_INIT};
 
 pub mod ffi {
     pub use tomcrypt_sys::*;
     pub use tomcrypt_sys::_bindgen_ty_2 as Error;
 }
 
-macro_rules! tryt {
-    ($e:expr) => {
-        match mem::transmute($e) {
-            ffi::CRYPT_OK => (),
-            e => return Err(Error::Tomcrypt(TomcryptError(e))),
-        }
-    };
-}
+pub use error::*;
+
 
 type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Fail, Debug)]
-pub enum Error {
-    #[fail(display = "{}", _0)]
-    Io(std::io::Error),
-    #[fail(display = "{}", _0)]
-    Tomcrypt(TomcryptError),
-}
-
-pub struct TomcryptError(ffi::_bindgen_ty_2);
-
-impl fmt::Display for TomcryptError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = unsafe {
-            CStr::from_ptr(ffi::error_to_string(self.0 as c_int)).to_str()
-                .unwrap()
-        };
-        write!(f, "{}", s)?;
-        Ok(())
-    }
-}
-
-impl fmt::Debug for TomcryptError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TomcryptError({})", self)?;
-        Ok(())
-    }
-}
 
 /// A random number generator.
 #[derive(Clone, Debug)]
@@ -287,11 +260,20 @@ impl EaxState {
     }
 }
 
-/// Init the tomcrypt library.
+/// Initialize the LibTomCrypt library.
+///
+/// Usually you do not need to call this manually, as it is lazily called when needed.
+///
+/// Calling this function more than once has no effect.
 pub fn init() {
-    unsafe {
+    static INIT: Once = ONCE_INIT;
+
+    INIT.call_once(|| unsafe {
         ffi::init_TFM();
-    }
+        ffi::register_all_ciphers();
+        ffi::register_all_hashes();
+        ffi::register_all_prngs();
+    });
 }
 
 /// Register the system pseudo random number generator.
