@@ -133,11 +133,15 @@ impl EccKey {
         }
     }
 
+    /// If this key stores a private key.
     pub fn is_private(&self) -> bool {
         self.0.type_ == ffi::PK_PRIVATE as c_int
     }
 
     /// Derive a shared secret from a private and a public key.
+    ///
+    /// The length of the generated secret is less or equal to the specified
+    /// length. If the specified length is too low, an error will be returned.
     pub fn create_shared_secret(
         private_key: &EccKey,
         public_key: &EccKey,
@@ -276,37 +280,58 @@ pub fn init() {
     });
 }
 
-/// Register the system pseudo random number generator.
-pub fn register_sprng() -> Result<()> {
-    unsafe {
-        tryt!(ffi::register_prng(&ffi::sprng_desc));
-    }
-    Ok(())
-}
-
-/// Get the sprng, it has to be registered first using [`register_sprng`].
-///
-/// [`register_sprng`]: fn.register_sprng.html
+/// Get the sprng.
 pub fn sprng() -> Rng {
+    ::init();
     Rng(unsafe {
         ffi::find_prng(CString::new("sprng").unwrap().as_ptr())
     })
 }
 
-/// Register the rijndael cipher (aes).
-pub fn register_rijndael_cipher() -> Result<()> {
-    unsafe {
-        tryt!(ffi::register_cipher(&ffi::rijndael_desc));
-    }
-    Ok(())
+/// Get the aes cipher (equivalent to rijndael).
+pub fn aes() -> Cipher {
+    ::init();
+    Cipher(unsafe {
+        ffi::find_cipher(CString::new("aes").unwrap().as_ptr())
+    })
 }
 
-/// Get the rijndael cipher (aes), it has to be registered first using
-/// [`register_rijndael_cipher`].
-///
-/// [`register_rijndael_cipher`]: fn.register_rijndael_cipher.html
-pub fn rijndael() -> Cipher {
-    Cipher(unsafe {
-        ffi::find_cipher(CString::new("rijndael").unwrap().as_ptr())
-    })
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+
+    #[test]
+    fn test_eax_loop() {
+        let key = [1; 16];
+        let nonce = [2; 16];
+        let header = [3; 3];
+        let data = [4; 10];
+        let tag_len = 7;
+
+        // Encrypt
+        let mut eax = EaxState::new(aes(), &key, &nonce, Some(&header))
+            .unwrap();
+        let enc = eax.encrypt(&data).unwrap();
+        let tag = eax.finish(tag_len).unwrap();
+
+        // Decrypt
+        let mut eax = EaxState::new(aes(), &key, &nonce, Some(&header))
+            .unwrap();
+        let dec = eax.decrypt(&enc).unwrap();
+        let tag2 = eax.finish(tag_len).unwrap();
+
+        assert_eq!(tag, tag2);
+        assert_eq!(&data, dec.as_slice());
+    }
+
+    #[test]
+    fn test_shared_secret() {
+        let k1 = EccKey::new(sprng(), 12).unwrap();
+        let k2 = EccKey::new(sprng(), 12).unwrap();
+        let len = 16;
+        let secret = EccKey::create_shared_secret(&k1, &k2, len).unwrap();
+        assert!(secret.len() <= len);
+    }
 }
