@@ -89,11 +89,6 @@ impl Hash {
     }
 
     #[inline]
-    pub(crate) fn index(&self) -> c_int {
-        self.0
-    }
-
-    #[inline]
     fn descriptor(&self) -> &'static ffi::ltc_hash_descriptor {
         unsafe {
             &*(&ffi::hash_descriptor as *const ffi::ltc_hash_descriptor).offset(self.0 as isize)
@@ -123,7 +118,9 @@ impl HashState {
         }
     }
 
-    /// Add data to the message being hashed. This method can be called repeatedly for use with streaming messages.
+    /// Add data to the message being hashed.
+    ///
+    /// This method can be called repeatedly for use with streaming messages.
     pub fn process<I: AsRef<[u8]>>(&mut self, input: I) -> Result<()> {
         let input = input.as_ref();
 
@@ -159,16 +156,16 @@ mod tests {
 
     #[test]
     fn test_find_hash() {
-        assert!(Hash::find("md5").unwrap() == Hash::md5());
+        assert_eq!(Hash::find("md5").unwrap(), Hash::md5());
 
         for name in &["md5", "sha1", "sha256"] {
             let hash = Hash::find(name).unwrap();
-            assert!(hash.name() == *name);
+            assert_eq!(hash.name(), *name);
         }
     }
 
     #[test]
     fn test_md5_hash() {
-        assert!(hex::encode(Hash::md5().hash("hello world").unwrap()) == "5eb63bbbe01eeed093cb22bb8f5acdc3");
+        assert_eq!(hex::encode(Hash::md5().hash("hello world").unwrap()), "5eb63bbbe01eeed093cb22bb8f5acdc3");
     }
 }
