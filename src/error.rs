@@ -15,6 +15,9 @@ macro_rules! tryt {
 }
 
 
+pub type Result<T> = ::std::result::Result<T, Error>;
+
+
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "{}", _0)]

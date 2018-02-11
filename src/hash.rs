@@ -1,8 +1,8 @@
+use error::Result;
 use ffi;
 use std::ffi::{CStr, CString};
 use std::mem;
 use std::os::raw::*;
-use super::Result;
 
 
 /// A cryptographic hash algorithm.

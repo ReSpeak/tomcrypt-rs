@@ -26,33 +26,31 @@ extern crate failure;
 extern crate hex;
 extern crate tomcrypt_sys;
 
-#[macro_use]
-mod error;
-pub mod hash;
-
+use error::Result;
 use std::ffi::*;
 use std::mem::{self, transmute};
 use std::os::raw::*;
 use std::ptr;
 use std::sync::{Once, ONCE_INIT};
+use symmetric::Cipher;
+
+#[macro_use]
+mod error;
+mod internal;
+pub mod hash;
+pub mod symmetric;
 
 pub mod ffi {
     pub use tomcrypt_sys::*;
     pub use tomcrypt_sys::_bindgen_ty_2 as Error;
 }
 
-pub use error::*;
-
-
-type Result<T> = std::result::Result<T, Error>;
+pub use error::Error;
 
 
 /// A random number generator.
 #[derive(Clone, Debug)]
 pub struct Rng(c_int);
-/// A cipher.
-#[derive(Clone, Debug)]
-pub struct Cipher(c_int);
 /// A private or public elliptic curve key.
 #[derive(Debug)]
 pub struct EccKey(ffi::ecc_key);
@@ -186,7 +184,7 @@ impl EaxState {
             let mut k = mem::uninitialized();
             tryt!(ffi::eax_init(
                 &mut k as *mut ffi::eax_state,
-                cipher.0,
+                cipher.index(),
                 key.as_ptr(),
                 key.len() as c_ulong,
                 nonce.as_ptr(),
@@ -288,14 +286,6 @@ pub fn sprng() -> Rng {
     })
 }
 
-/// Get the aes cipher (equivalent to rijndael).
-pub fn aes() -> Cipher {
-    ::init();
-    Cipher(unsafe {
-        ffi::find_cipher(CString::new("aes").unwrap().as_ptr())
-    })
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -311,13 +301,13 @@ mod tests {
         let tag_len = 7;
 
         // Encrypt
-        let mut eax = EaxState::new(aes(), &key, &nonce, Some(&header))
+        let mut eax = EaxState::new(Cipher::aes(), &key, &nonce, Some(&header))
             .unwrap();
         let enc = eax.encrypt(&data).unwrap();
         let tag = eax.finish(tag_len).unwrap();
 
         // Decrypt
-        let mut eax = EaxState::new(aes(), &key, &nonce, Some(&header))
+        let mut eax = EaxState::new(Cipher::aes(), &key, &nonce, Some(&header))
             .unwrap();
         let dec = eax.decrypt(&enc).unwrap();
         let tag2 = eax.finish(tag_len).unwrap();
