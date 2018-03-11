@@ -233,16 +233,16 @@ impl Drop for CBC {
 pub struct CTR(ffi::symmetric_CTR);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CTRCounterMode {
+pub enum CTREndianness {
     BigEndian,
     LittleEndian,
 }
 
 impl CTR {
-    pub fn new(cipher: Cipher, iv: &[u8], key: &[u8], rounds: Option<u32>, mode: CTRCounterMode) -> Result<Self> {
+    pub fn new(cipher: Cipher, iv: &[u8], key: &[u8], rounds: Option<u32>, mode: CTREndianness) -> Result<Self> {
         let ctr_flags = iv.len() as c_int | match mode {
-            CTRCounterMode::BigEndian => ffi::CTR_COUNTER_BIG_ENDIAN,
-            CTRCounterMode::LittleEndian => ffi::CTR_COUNTER_LITTLE_ENDIAN,
+            CTREndianness::BigEndian => ffi::CTR_COUNTER_BIG_ENDIAN,
+            CTREndianness::LittleEndian => ffi::CTR_COUNTER_LITTLE_ENDIAN,
         } as c_int;
 
         unsafe {
