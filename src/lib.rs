@@ -39,6 +39,7 @@ mod error;
 mod internal;
 pub mod hash;
 pub mod mac;
+pub mod rand;
 pub mod symmetric;
 pub mod util;
 
