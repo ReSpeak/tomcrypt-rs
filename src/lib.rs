@@ -38,7 +38,9 @@ use symmetric::Cipher;
 mod error;
 mod internal;
 pub mod hash;
+pub mod mac;
 pub mod symmetric;
+pub mod util;
 
 pub mod ffi {
     pub use tomcrypt_sys::*;

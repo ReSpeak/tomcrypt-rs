@@ -89,6 +89,11 @@ impl Hash {
     }
 
     #[inline]
+    pub(crate) fn index(&self) -> c_int {
+        self.0
+    }
+
+    #[inline]
     fn descriptor(&self) -> &'static ffi::ltc_hash_descriptor {
         unsafe {
             &*(&ffi::hash_descriptor as *const ffi::ltc_hash_descriptor).offset(self.0 as isize)
