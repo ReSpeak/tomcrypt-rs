@@ -71,6 +71,7 @@ impl Algorithm {
         self.0
     }
 
+    #[inline]
     fn descriptor(&self) -> &'static ffi::ltc_prng_descriptor {
         unsafe {
             &*(&ffi::prng_descriptor as *const ffi::ltc_prng_descriptor).offset(self.0 as isize)
