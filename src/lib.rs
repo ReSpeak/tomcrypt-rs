@@ -27,7 +27,6 @@ extern crate hex;
 extern crate tomcrypt_sys;
 
 use error::Result;
-use std::ffi::*;
 use std::mem::{self, transmute};
 use std::os::raw::*;
 use std::ptr;
@@ -50,10 +49,6 @@ pub mod ffi {
 
 pub use error::Error;
 
-
-/// A random number generator.
-#[derive(Clone, Debug)]
-pub struct Rng(c_int);
 /// A private or public elliptic curve key.
 #[derive(Debug)]
 pub struct EccKey(ffi::ecc_key);
@@ -76,12 +71,12 @@ impl EccKey {
     /// | 32      | 256   |
     /// | 48      | 384   |
     /// | 65      | 521   |
-    pub fn new(prng: Rng, keysize: c_uint) -> Result<Self> {
+    pub fn new(prng: rand::PrngAlgorithm, keysize: c_uint) -> Result<Self> {
         unsafe {
             let mut k = mem::uninitialized();
             tryt!(ffi::ecc_make_key(
                 ptr::null_mut(),
-                prng.0,
+                prng.index(),
                 keysize as c_int,
                 &mut k as *mut ffi::ecc_key
             ));
@@ -281,14 +276,6 @@ pub fn init() {
     });
 }
 
-/// Get the sprng.
-pub fn sprng() -> Rng {
-    ::init();
-    Rng(unsafe {
-        ffi::find_prng(CString::new("sprng").unwrap().as_ptr())
-    })
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -321,8 +308,8 @@ mod tests {
 
     #[test]
     fn test_shared_secret() {
-        let k1 = EccKey::new(sprng(), 12).unwrap();
-        let k2 = EccKey::new(sprng(), 12).unwrap();
+        let k1 = EccKey::new(rand::PrngAlgorithm::sprng(), 12).unwrap();
+        let k2 = EccKey::new(rand::PrngAlgorithm::sprng(), 12).unwrap();
         let len = 16;
         let secret = EccKey::create_shared_secret(&k1, &k2, len).unwrap();
         assert!(secret.len() <= len);

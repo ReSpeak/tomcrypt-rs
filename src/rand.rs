@@ -64,6 +64,11 @@ impl PrngAlgorithm {
         }
     }
 
+    #[inline]
+    pub(crate) fn index(&self) -> c_int {
+        self.0
+    }
+
     fn descriptor(&self) -> &'static ffi::ltc_prng_descriptor {
         unsafe {
             &*(&ffi::prng_descriptor as *const ffi::ltc_prng_descriptor).offset(self.0 as isize)
