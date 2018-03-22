@@ -71,7 +71,7 @@ impl EccKey {
     /// | 32      | 256   |
     /// | 48      | 384   |
     /// | 65      | 521   |
-    pub fn new(prng: rand::PrngAlgorithm, keysize: c_uint) -> Result<Self> {
+    pub fn new(prng: rand::Algorithm, keysize: c_uint) -> Result<Self> {
         unsafe {
             let mut k = mem::uninitialized();
             tryt!(ffi::ecc_make_key(
