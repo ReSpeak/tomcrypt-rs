@@ -108,16 +108,18 @@ impl Default for Prng {
 
 impl Prng {
     /// Create a new pseudo-random number generator using the given algorithm.
-    pub fn new(algorithm: Algorithm) -> Self {
+    pub fn new(algorithm: Algorithm) -> Result<Self> {
         unsafe {
             let mut raw = mem::uninitialized();
 
-            (algorithm.descriptor().start.unwrap())(&mut raw);
+            tryt! {
+                (algorithm.descriptor().start.unwrap())(&mut raw)
+            };
 
-            Self {
+            Ok(Self {
                 algorithm: algorithm,
                 raw: raw,
-            }
+            })
         }
     }
 
@@ -127,7 +129,8 @@ impl Prng {
     ///
     /// [`Algorithm::sprng`]: struct.Algorithm.html#method.sprng
     pub fn sprng() -> Self {
-        Self::new(Algorithm::sprng())
+        // This operation is always successful for the SPRNG.
+        Self::new(Algorithm::sprng()).unwrap()
     }
 
     /// Get the algorithm used by this PRNG.
@@ -192,5 +195,40 @@ impl Drop for Prng {
         unsafe {
             (self.algorithm.descriptor().done.unwrap())(&mut self.raw);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Read;
+    use super::*;
+
+    #[test]
+    fn create_sprng() {
+        let mut prng = Prng::sprng();
+        test_prng(&mut prng);
+    }
+
+    #[test]
+    fn create_chacha20() {
+        let mut prng = Prng::new(Algorithm::chacha20()).unwrap();
+        prng.add_entropy(&[12; 40]).unwrap();
+        prng.ready().unwrap();
+
+        test_prng(&mut prng);
+    }
+
+    #[test]
+    fn create_fortuna() {
+        let mut prng = Prng::new(Algorithm::fortuna()).unwrap();
+        prng.add_entropy(&[12; 40]).unwrap();
+        prng.ready().unwrap();
+
+        test_prng(&mut prng);
+    }
+
+    fn test_prng(prng: &mut Prng) {
+        let mut data = [0; 128];
+        prng.read_exact(&mut data).unwrap();
     }
 }

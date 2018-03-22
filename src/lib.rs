@@ -308,8 +308,8 @@ mod tests {
 
     #[test]
     fn test_shared_secret() {
-        let k1 = EccKey::new(rand::PrngAlgorithm::sprng(), 12).unwrap();
-        let k2 = EccKey::new(rand::PrngAlgorithm::sprng(), 12).unwrap();
+        let k1 = EccKey::new(rand::Algorithm::sprng(), 12).unwrap();
+        let k2 = EccKey::new(rand::Algorithm::sprng(), 12).unwrap();
         let len = 16;
         let secret = EccKey::create_shared_secret(&k1, &k2, len).unwrap();
         assert!(secret.len() <= len);
