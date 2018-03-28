@@ -141,6 +141,14 @@ impl Prng {
     }
 
     /// Add entropy to the PRNG state.
+    ///
+    /// After adding entropy, [`ready`] must be called to actually use it.
+    /// It is possible to read and add entropy from a prng at the same time.
+    ///
+    /// Alternatively you can write into this prng and flush afterwards (which
+    /// calls [`ready`]).
+    ///
+    /// [`ready`]: #method.ready
     pub fn add_entropy(&mut self, input: &[u8]) -> Result<()> {
         unsafe {
             tryt! {
