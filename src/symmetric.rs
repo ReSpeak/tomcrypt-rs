@@ -143,20 +143,20 @@ pub trait CipherMode {
 ///
 /// This mode is very weak since it allows people to swap blocks and perform replay attacks if the same key is used more
 /// than once.
-pub struct ECB(ffi::symmetric_ECB);
+pub struct Ecb(ffi::symmetric_ECB);
 
-impl ECB {
+impl Ecb {
     pub fn new(cipher: Cipher, key: &[u8], rounds: Option<u32>) -> Result<Self> {
         unsafe {
             let mut raw = mem::uninitialized();
             tryt!(ffi::ecb_start(cipher.index(), key.as_ptr(), key.len() as c_int, rounds.unwrap_or(0) as c_int, &mut raw));
 
-            Ok(ECB(raw))
+            Ok(Ecb(raw))
         }
     }
 }
 
-impl CipherMode for ECB {
+impl CipherMode for Ecb {
     unsafe fn encrypt_unchecked(&mut self, plaintext: &[u8], ciphertext: &mut [u8]) -> Result<()> {
         tryt!(ffi::ecb_encrypt(plaintext.as_ptr(), ciphertext.as_mut_ptr(), plaintext.len() as u64, &mut self.0));
 
@@ -170,7 +170,7 @@ impl CipherMode for ECB {
     }
 }
 
-impl Drop for ECB {
+impl Drop for Ecb {
     fn drop(&mut self) {
         unsafe {
             ffi::ecb_done(&mut self.0);
@@ -184,9 +184,9 @@ impl Drop for ECB {
 ///
 /// It is important that the initialization vector be unique and preferably random for each message encrypted under the
 /// same key.
-pub struct CBC(ffi::symmetric_CBC);
+pub struct Cbc(ffi::symmetric_CBC);
 
-impl CBC {
+impl Cbc {
     pub fn new(cipher: Cipher, iv: &[u8], key: &[u8], rounds: Option<u32>) -> Result<Self> {
         // Validate the IV size since LibTomCrypt doesn't.
         if iv.len() != cipher.block_size() {
@@ -197,12 +197,12 @@ impl CBC {
             let mut raw = mem::uninitialized();
             tryt!(ffi::cbc_start(cipher.index(), iv.as_ptr(), key.as_ptr(), key.len() as c_int, rounds.unwrap_or(0) as c_int, &mut raw));
 
-            Ok(CBC(raw))
+            Ok(Cbc(raw))
         }
     }
 }
 
-impl CipherMode for CBC {
+impl CipherMode for Cbc {
     unsafe fn encrypt_unchecked(&mut self, plaintext: &[u8], ciphertext: &mut [u8]) -> Result<()> {
         tryt!(ffi::cbc_encrypt(plaintext.as_ptr(), ciphertext.as_mut_ptr(), plaintext.len() as u64, &mut self.0));
 
@@ -216,7 +216,7 @@ impl CipherMode for CBC {
     }
 }
 
-impl Drop for CBC {
+impl Drop for Cbc {
     fn drop(&mut self) {
         unsafe {
             ffi::cbc_done(&mut self.0);
@@ -230,19 +230,19 @@ impl Drop for CBC {
 /// As long as the initialization vector is random for each message encrypted under the same key replay and swap attacks
 /// are infeasible. CTR mode may look simple but it is as secure as the block cipher is under a chosen plaintext attack
 /// (provided the initialization vector is unique).
-pub struct CTR(ffi::symmetric_CTR);
+pub struct Ctr(ffi::symmetric_CTR);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CTREndianness {
+pub enum CtrEndianness {
     BigEndian,
     LittleEndian,
 }
 
-impl CTR {
-    pub fn new(cipher: Cipher, iv: &[u8], key: &[u8], rounds: Option<u32>, mode: CTREndianness) -> Result<Self> {
+impl Ctr {
+    pub fn new(cipher: Cipher, iv: &[u8], key: &[u8], rounds: Option<u32>, mode: CtrEndianness) -> Result<Self> {
         let ctr_flags = iv.len() as c_int | match mode {
-            CTREndianness::BigEndian => ffi::CTR_COUNTER_BIG_ENDIAN,
-            CTREndianness::LittleEndian => ffi::CTR_COUNTER_LITTLE_ENDIAN,
+            CtrEndianness::BigEndian => ffi::CTR_COUNTER_BIG_ENDIAN,
+            CtrEndianness::LittleEndian => ffi::CTR_COUNTER_LITTLE_ENDIAN,
         } as c_int;
 
         unsafe {
@@ -258,12 +258,12 @@ impl CTR {
                 &mut raw,
             ));
 
-            Ok(CTR(raw))
+            Ok(Ctr(raw))
         }
     }
 }
 
-impl CipherMode for CTR {
+impl CipherMode for Ctr {
     unsafe fn encrypt_unchecked(&mut self, plaintext: &[u8], ciphertext: &mut [u8]) -> Result<()> {
         tryt!(ffi::ctr_encrypt(plaintext.as_ptr(), ciphertext.as_mut_ptr(), plaintext.len() as u64, &mut self.0));
 
@@ -277,7 +277,7 @@ impl CipherMode for CTR {
     }
 }
 
-impl Drop for CTR {
+impl Drop for Ctr {
     fn drop(&mut self) {
         unsafe {
             ffi::ctr_done(&mut self.0);
@@ -287,9 +287,9 @@ impl Drop for CTR {
 
 
 /// CFB or Ciphertext Feedback Mode is a mode akin to CBC.
-pub struct CFB(ffi::symmetric_CFB);
+pub struct Cfb(ffi::symmetric_CFB);
 
-impl CFB {
+impl Cfb {
     pub fn new(cipher: Cipher, iv: &[u8], key: &[u8], rounds: Option<u32>) -> Result<Self> {
         unsafe {
             let mut raw = mem::uninitialized();
@@ -302,12 +302,12 @@ impl CFB {
                 &mut raw,
             ));
 
-            Ok(CFB(raw))
+            Ok(Cfb(raw))
         }
     }
 }
 
-impl CipherMode for CFB {
+impl CipherMode for Cfb {
     unsafe fn encrypt_unchecked(&mut self, plaintext: &[u8], ciphertext: &mut [u8]) -> Result<()> {
         tryt!(ffi::cfb_encrypt(plaintext.as_ptr(), ciphertext.as_mut_ptr(), plaintext.len() as u64, &mut self.0));
 
@@ -321,7 +321,7 @@ impl CipherMode for CFB {
     }
 }
 
-impl Drop for CFB {
+impl Drop for Cfb {
     fn drop(&mut self) {
         unsafe {
             ffi::cfb_done(&mut self.0);
@@ -331,9 +331,9 @@ impl Drop for CFB {
 
 
 /// OFB or Output Feedback Mode is a mode akin to CBC as well.
-pub struct OFB(ffi::symmetric_OFB);
+pub struct Ofb(ffi::symmetric_OFB);
 
-impl OFB {
+impl Ofb {
     pub fn new(cipher: Cipher, iv: &[u8], key: &[u8], rounds: Option<u32>) -> Result<Self> {
         unsafe {
             let mut raw = mem::uninitialized();
@@ -346,12 +346,12 @@ impl OFB {
                 &mut raw,
             ));
 
-            Ok(OFB(raw))
+            Ok(Ofb(raw))
         }
     }
 }
 
-impl CipherMode for OFB {
+impl CipherMode for Ofb {
     unsafe fn encrypt_unchecked(&mut self, plaintext: &[u8], ciphertext: &mut [u8]) -> Result<()> {
         tryt!(ffi::ofb_encrypt(plaintext.as_ptr(), ciphertext.as_mut_ptr(), plaintext.len() as u64, &mut self.0));
 
@@ -365,7 +365,7 @@ impl CipherMode for OFB {
     }
 }
 
-impl Drop for OFB {
+impl Drop for Ofb {
     fn drop(&mut self) {
         unsafe {
             ffi::ofb_done(&mut self.0);
@@ -395,7 +395,7 @@ mod tests {
         let data = vec![2; Cipher::aes().block_size()];
         let mut buffer = data.clone();
 
-        let mut ecb = ECB::new(Cipher::aes(), key.as_ref(), None).unwrap();
+        let mut ecb = Ecb::new(Cipher::aes(), key.as_ref(), None).unwrap();
 
         ecb.encrypt_in_place(&mut buffer).unwrap();
         ecb.decrypt_in_place(&mut buffer).unwrap();
